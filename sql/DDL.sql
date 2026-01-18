@@ -172,7 +172,7 @@ CREATE TABLE leave_request (
 CREATE TABLE leave_history (
     leave_history_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     leave_request_id BIGINT NOT NULL UNIQUE,
-    use_days DECIMAL(3,1),
+    use_days DECIMAL(3,1) CHECK (use_days >= 0),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (leave_request_id) REFERENCES leave_request(leave_request_id)
@@ -197,7 +197,6 @@ CREATE TABLE payslip_item (
     payslip_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     payslip_id BIGINT NOT NULL,
     pay_item_id BIGINT NOT NULL,
-    item_type VARCHAR(10),
     amount DECIMAL(12,0),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
