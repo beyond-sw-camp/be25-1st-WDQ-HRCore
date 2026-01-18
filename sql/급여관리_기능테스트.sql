@@ -210,13 +210,11 @@ BEGIN
     INSERT INTO payslip_item (
         payslip_id,
         pay_item_id,
-        item_type,
         amount
     )
     SELECT
         v_payslip_id,
         pi.pay_item_id,
-        'EARN',
         v_base_salary
     FROM pay_item pi
     WHERE pi.pay_item_code = 'BASE_SALARY'
@@ -228,13 +226,11 @@ BEGIN
     INSERT INTO payslip_item (
         payslip_id,
         pay_item_id,
-        item_type,
         amount
     )
     SELECT
         v_payslip_id,
         pi.pay_item_id,
-        'DEDUCT',
         ROUND(v_base_salary * pi.calc_value / 100, 0)
     FROM pay_item pi
     WHERE pi.item_type = 'DEDUCT'
@@ -246,7 +242,7 @@ BEGIN
     INTO v_total_deduct
     FROM payslip_item
     WHERE payslip_id = v_payslip_id
-      AND item_type = 'DEDUCT';
+    	AND pay_item_id IN (SELECT pay_item_id FROM pay_item WHERE item_type='DEDUCT');
 
     -- payslip 금액 확정
     UPDATE payslip
@@ -268,7 +264,7 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL payslip_create(1, '2026-06');
+CALL payslip_create(1, '2026-02');
 
 -- 확인
 SELECT * FROM employee;
@@ -280,7 +276,7 @@ SELECT * FROM payslip_access;
 
 -- 급여 명세서 확정 (요구사항 코드: PAYSLIP_002) 
 DELIMITER $$
-CREATE PROCEDURE payslip_confirm (
+CREATE OR REPLACE PROCEDURE payslip_confirm (
     IN p_payslip_id BIGINT
 )
 BEGIN
@@ -312,7 +308,7 @@ BEGIN
 END $$
 DELIMITER ;
 
-CALL payslip_confirm(10);
+CALL payslip_confirm(1);
 
 -- 확인
 SELECT * FROM payslip;
@@ -322,7 +318,7 @@ SELECT * FROM payslip;
 -- 급여 명세서 조회 (요구사항 코드: PAYSLIP_003) 
 -- 관리자용 급여 명세서 조회 기능
 DELIMITER $$
-CREATE PROCEDURE payslip_view_admin (
+CREATE OR REPLACE PROCEDURE payslip_view_admin (
     IN p_payslip_id BIGINT
 )
 BEGIN
@@ -337,32 +333,43 @@ BEGIN
         SET MESSAGE_TEXT = '확정된 급여 명세서만 조회할 수 있습니다';
     END IF;
 
-    -- 급여 명세서 + 항목 조회
+    -- 급여 명세서 요약
     SELECT
         p.payslip_id,
         p.emp_id,
+        e.name,
+        d.dept_name,
+        pos.position_name,
         p.pay_ym,
         p.total_pay,
         p.total_deduct,
-        p.net_pay,
-        pi.item_type,
-        pi.amount,
-        pi.pay_item_id
+        p.net_pay
     FROM payslip p
-    JOIN payslip_item pi
-      ON p.payslip_id = pi.payslip_id
-    WHERE p.payslip_id = p_payslip_id
-    ORDER BY pi.item_type DESC, pi.pay_item_id ASC;
+    JOIN employee e ON p.emp_id = e.emp_id
+    JOIN job_position pos ON e.position_id = pos.position_id
+    JOIN department d ON e.dept_id = d.dept_id
+    WHERE p.payslip_id = p_payslip_id;
+
+    -- 급여 항목
+    SELECT
+        pi.pay_item_id,
+        pit.pay_item_name,
+        pit.item_type,
+        pi.amount
+    FROM payslip_item pi
+    JOIN pay_item pit ON pi.pay_item_id = pit.pay_item_id
+    WHERE pi.payslip_id = p_payslip_id
+    ORDER BY pit.item_type DESC, pi.pay_item_id ASC;
 END$$
 DELIMITER ;
 
-CALL payslip_view_admin(2);
+CALL payslip_view_admin(1);
 
 
 
 -- 본인용 급여 명세서
 DELIMITER $$
-CREATE PROCEDURE payslip_view_self (
+CREATE OR REPLACE PROCEDURE payslip_view_self (
     IN p_payslip_id BIGINT,
     IN p_emp_id     BIGINT,
     IN p_birth_pwd  CHAR(6)
@@ -443,23 +450,34 @@ BEGIN
         updated_at = CURRENT_TIMESTAMP
     WHERE payslip_id = p_payslip_id;
 
-    -- 급여 명세서 조회
-    SELECT
-        p.pay_ym,
-        p.total_pay,
-        p.total_deduct,
-        p.net_pay,
-        pi.item_type,
-        pi.amount
-    FROM payslip p
-    JOIN payslip_item pi
-      ON p.payslip_id = pi.payslip_id
-    WHERE p.payslip_id = p_payslip_id
-    ORDER BY pi.item_type DESC, pi.pay_item_id ASC;
+    -- 급여 명세서 요약
+ 	 SELECT
+		  e.`name`,	
+		  d.dept_name,
+		  pos.position_name,
+	     p.pay_ym,
+	     p.total_pay,
+	     p.total_deduct,
+	     p.net_pay
+	 FROM payslip p
+	 JOIN employee e ON p.emp_id = e.emp_id
+	 JOIN job_position pos ON e.position_id = pos.position_id
+	 JOIN department d ON e.dept_id = d.dept_id
+	 WHERE p.payslip_id = p_payslip_id;
+		
+	 -- 급여 항목
+ 	 SELECT
+	     pit.pay_item_name,
+	     pit.item_type,
+	     pi.amount
+	 FROM payslip_item pi
+	 JOIN pay_item pit ON pi.pay_item_id = pit.pay_item_id
+	 WHERE pi.payslip_id = p_payslip_id
+	 ORDER BY pit.item_type DESC, pi.pay_item_id ASC;
     COMMIT;
 END$$
 DELIMITER ;
 
-CALL payslip_view_self(2, 1, '820329');
+CALL payslip_view_self(1, 1, '850814');
 
-SELECT * FROM payslip_access;
+SELECT * FROM payslip_access WHERE payslip_id = 1;
