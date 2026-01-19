@@ -1,12 +1,6 @@
-USE hr_system;
-
-SELECT DATABASE();
-
 -- ==============================================================
 -- 근무유형 기준관리
 -- ==============================================================
-
-
 -- 근무유형 등록 (요구사항 코드 : WORK_TYPE_001)
 INSERT INTO work_type (work_type_code, work_type_name, start_time, end_time, use_yn)
 VALUES
@@ -46,13 +40,6 @@ FROM work_type;
 -- (현재 ERD/명세서 구조상 work_type의 start_time/end_time을 "근무시간 기준"으로 관리)
 -- 별도 테이블 없음 → work_type 수정으로 처리
 -- ==============================================================
-
--- 근무시간 기준 등록 (요구사항 코드: WORK_TIME_001)
--- 이미 WORK_TYPE_001에서 등록되므로, 별도 등록 예시는 "추가 근무유형"으로 보여줌
-INSERT INTO work_type (work_type_code, work_type_name, start_time, end_time, use_yn)
-VALUES ('REG_1000_1900', '정규근무(10:00-19:00)', '10:00:00', '19:00:00', 'Y');
-
-SELECT * FROM work_type WHERE work_type_code = 'REG_1000_1900';
 
 -- 근무시간 기준 수정 (요구사항 코드 : WORK_TIME_002)
 UPDATE work_type
@@ -119,27 +106,74 @@ FROM attendance_status;
 -- 휴가기준 등록 (요구사항 코드: VAC_001)
 INSERT INTO leave_type (leave_type_name, annual_max_days, use_yn)
 VALUES
-('연차', 15, 'Y'),
-('반차', NULL, 'Y'),
-('병가', NULL, 'Y'),
-('경조', NULL, 'Y'),
-('공가', NULL, 'Y');
+('연차', NULL, 'Y'),
+('병가', 24, 'Y'),
+('경조', 5, 'Y'),
+('공가', 5, 'Y');
 
-SELECT * FROM leave_type;
+INSERT INTO leave_annual_policy (leave_type_id, min_years, max_years, annual_max_days, use_yn)
+VALUES
+(1, 0, 0, 9, 'Y'), 
+(1, 1, 3, 15, 'Y'), 
+(1, 4, 9, 24, 'Y'), 
+(1, 10, 100, 30, 'Y'); 
+
+
 
 -- 휴가기준 수정 (요구사항 코드: VAC_002)
-UPDATE leave_type
-SET annual_max_days = 16,
-    updated_at = NOW()
-WHERE leave_type_name = '연차';
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE update_leave_type(
+    IN p_leave_type_id BIGINT,
+    IN p_leave_type_name VARCHAR(50),
+    IN p_annual_max_days INT,
+    IN p_use_yn CHAR(1)
+)
+BEGIN
+    UPDATE leave_type
+    SET leave_type_name = p_leave_type_name,
+        annual_max_days = p_annual_max_days,
+        use_yn = p_use_yn,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE leave_type_id = p_leave_type_id;
+END $$
+DELIMITER ;
 
-SELECT * FROM leave_type WHERE leave_type_name = '연차';
+CALL update_leave_type(3, '경조사', 5, 'Y');
+
+--
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE update_leave_annual_policy(
+    IN p_leave_type_id BIGINT,
+    IN p_min_years INT,
+    IN p_max_years INT,
+    IN p_annual_max_days INT,
+    IN p_use_yn CHAR(1)
+)
+BEGIN
+    UPDATE leave_annual_policy
+    SET annual_max_days = p_annual_max_days,
+        use_yn = p_use_yn,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE leave_type_id = p_leave_type_id
+      AND min_years = p_min_years
+      AND max_years = p_max_years;
+END $$
+DELIMITER ;
+
+CALL update_leave_annual_policy(1, 4, 9, 24, 'Y');
 
 -- 휴가기준 조회 (요구사항 코드 : VAC_003)
--- 비활성 포함 전체 조회
-SELECT
-    leave_type_id, leave_type_name, annual_max_days, use_yn, created_at, updated_at
-FROM leave_type;
+SELECT 
+    lt.leave_type_id,
+    lt.leave_type_name,
+    lt.annual_max_days AS type_max_days,
+    lap.min_years,
+    lap.max_years,
+    lap.annual_max_days AS policy_max_days,
+    lap.use_yn AS policy_use_yn
+FROM leave_type lt
+LEFT JOIN leave_annual_policy lap
+    ON lt.leave_type_id = lap.leave_type_id;
 
 
 -- =========================================================
@@ -148,11 +182,8 @@ FROM leave_type;
 
 -- 출퇴근 기록 등록 (요구사항 코드: INOUT_001)
 -- 규칙: 출근이 기준시간(start_time)보다 늦으면 지각(LATE), 아니면 정상(NORMAL)
-
-DROP PROCEDURE IF EXISTS hr_system.inout_check_in;
-
 DELIMITER $$
-CREATE PROCEDURE hr_system.inout_check_in (
+CREATE OR REPLACE PROCEDURE hr_system.inout_check_in (
     IN p_emp_id BIGINT,
     IN p_work_type_id BIGINT,
     IN p_work_date DATE,
@@ -503,9 +534,3 @@ JOIN attendance_status s ON ar.status_id = s.status_id
 WHERE ar.work_date BETWEEN '2026-01-01' AND '2026-01-31'
 GROUP BY d.dept_id, d.dept_name
 ORDER BY d.dept_name;
-
-
-
-
-
-
