@@ -20,6 +20,7 @@
 ## 🗃️ 프로젝트 개요
 
 ## 📊 WBS
+![WBS](https://github.com/beyond-sw-camp/be25-1st-HRCore-project/blob/main/WBS.png?raw=true)
 
 ## 📄 요구사항 명세서
 
