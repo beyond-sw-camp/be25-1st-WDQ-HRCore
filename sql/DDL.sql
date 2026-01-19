@@ -45,6 +45,15 @@ CREATE TABLE leave_type (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE leave_annual_policy (
+    leave_annual_policy_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    leave_type_id BIGINT NOT NULL,       
+    min_years INT NOT NULL,              
+    max_years INT NOT NULL,              
+    annual_max_days INT NOT NULL,        
+    use_yn CHAR(1) NOT NULL DEFAULT 'Y'  
+);
+
 CREATE TABLE pay_item (
     pay_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     pay_item_code VARCHAR(30) NOT NULL UNIQUE,
