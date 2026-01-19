@@ -35,36 +35,6 @@ SELECT
 FROM work_type;
 
 
--- ==============================================================
--- 근무시간 기준관
--- (현재 ERD/명세서 구조상 work_type의 start_time/end_time을 "근무시간 기준"으로 관리)
--- 별도 테이블 없음 → work_type 수정으로 처리
--- ==============================================================
-
--- 근무시간 기준 수정 (요구사항 코드 : WORK_TIME_002)
-UPDATE work_type
-SET start_time = '09:30:00',
-    end_time   = '18:30:00',
-    updated_at = NOW()
-WHERE work_type_code = 'REG_1000_1900';
-
-SELECT * FROM work_type WHERE work_type_code = 'REG_1000_1900';
-
--- 근무시간 기준 조회 (요구사항 코드 : WORK_TIME_003)
-SELECT
-    work_type_id, work_type_code, work_type_name, start_time, end_time, use_yn
-FROM work_type
-ORDER BY work_type_id;
-
--- 초과근무 기준 등록 (요구사항 코드: WORK_TIME_004)
--- 따라서 DB에 기준을 저장하지 않고, 업무 규칙으로 고정(문서/로직)하여 overtime_record.overtime_type으로 기록함.
--- 예: 18~22 = EXTEND, 22~06 = NIGHT (저장 위치: overtime_record.overtime_type)
--- (DB 변경 없이 요구사항을 만족하는 방식)
-
-
--- =========================================================
--- 근태상태 코드관리
--- =========================================================
 
 -- 근태상태코드 등록 (요구사항 코드: WORK_CON_001)
 INSERT INTO attendance_status (status_code, status_name, use_yn)
@@ -75,23 +45,56 @@ VALUES
 ('ABSENT', '결석', 'Y'),
 ('LEAVE',  '휴가', 'Y');
 
-SELECT * FROM attendance_status;
+
 
 -- 근태상태코드 수정 (요구사항 코드 : WORK_CON_002)
-UPDATE attendance_status
-SET status_name = '지각(수정)',
-    updated_at = NOW()
-WHERE status_code = 'LATE';
+DELIMITER $$
+CREATE PROCEDURE attendance_status_name_update (
+    IN p_status_code VARCHAR(30),
+    IN p_status_name VARCHAR(100)
+)
+BEGIN
+    UPDATE attendance_status
+    SET status_name = p_status_name,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE status_code = p_status_code;
 
-SELECT * FROM attendance_status WHERE status_code = 'LATE';
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '근태 상태코드 수정 실패: 대상 상태코드를 찾을 수 없습니다.';
+    END IF;
+END$$
+DELIMITER ;
+
+CALL attendance_status_name_update('LATE', '지각');
+
 
 -- 근태상태코드 활성/비활성 (요구사항 코드 : WORK_CON_003)
-UPDATE attendance_status
-SET use_yn = 'N',
-    updated_at = NOW()
-WHERE status_code = 'EARLY';
+DELIMITER $$
+CREATE PROCEDURE attendance_status_toggle_use (
+    IN p_status_code VARCHAR(30),
+    IN p_use_yn CHAR(1)
+)
+BEGIN
+    IF p_use_yn NOT IN ('Y', 'N') THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '근태 상태코드 활성/비활성(WORK_CON_003) 실패: use_yn 값은 Y 또는 N 이어야 합니다.';
+    END IF;
 
-SELECT * FROM attendance_status WHERE status_code = 'EARLY';
+    UPDATE attendance_status
+    SET use_yn = p_use_yn,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE status_code = p_status_code;
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '근태 상태코드 활성/비활성(WORK_CON_003) 실패: 대상 상태코드를 찾을 수 없습니다.';
+    END IF;
+END$$
+DELIMITER ;
+
+CALL attendance_status_toggle_use('EARLY', 'Y');
+
 
 -- 근태상태코드 조회 (요구사항 코드 : WORK_CON_004)
 SELECT
@@ -99,9 +102,6 @@ SELECT
 FROM attendance_status;
 
 
--- =========================================================
--- 휴가기준관리
--- =========================================================
 
 -- 휴가기준 등록 (요구사항 코드: VAC_001)
 INSERT INTO leave_type (leave_type_name, annual_max_days, use_yn)
@@ -176,9 +176,6 @@ LEFT JOIN leave_annual_policy lap
     ON lt.leave_type_id = lap.leave_type_id;
 
 
--- =========================================================
--- 근태기록관리
--- =========================================================
 
 -- 출퇴근 기록 등록 (요구사항 코드: INOUT_001)
 DELIMITER $$
@@ -237,8 +234,8 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL check_in(2, 1, '2026-01-19', '2026-01-19 08:50:00');
-CALL check_in(3, 1, '2026-01-19', '2026-01-19 09:10:00');
+CALL check_in(2, 1, '2026-01-20', '2026-01-20 08:50:00');
+CALL check_in(3, 1, '2026-01-20', '2026-01-20 09:10:00');
 
    
 
@@ -315,223 +312,478 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL check_out(2, '2026-01-19', '2026-01-19 18:20:00');    
-CALL check_out(3, '2026-01-19', '2026-01-19 14:00:00');    
+CALL check_out(2, '2026-01-20', '2026-01-20 18:20:00');    
+CALL check_out(3, '2026-01-20', '2026-01-20 18:00:00');    
 
 
 
-
--- 출퇴근 기록 조회 (요구사항 코드 : INOUT_002)
--- 1) 개인 + 기간 조회
-SELECT *
-FROM attendance_record
-WHERE emp_id = 1
-  AND work_date BETWEEN '2026-01-01' AND '2026-01-31'
-ORDER BY work_date;
-
--- 2) 부서 + 기간 조회
-SELECT ar.*
-FROM attendance_record ar
-JOIN employee e ON ar.emp_id = e.emp_id
-WHERE e.dept_id = 1
-  AND ar.work_date BETWEEN '2026-01-01' AND '2026-01-31'
-ORDER BY ar.work_date;
-
-
--- 초과근무 기록 등록 (요구사항 코드 : INOUT_003)
--- overtime_type 예시: EXTEND(연장), NIGHT(야간)
-INSERT INTO overtime_record (
-    emp_id, work_date, overtime_minutes, approval_status, overtime_type
-) VALUES (
-    1, '2026-01-19', 120, 'PENDING', 'EXTEND'
-);
-
-SELECT * FROM overtime_record WHERE emp_id = 1 AND work_date = '2026-01-19';
-
-
-
-
--- 초과근무 승인/반려 (요구사항 코드 : INOUT_003)
--- 승인/반려 모두: 대상 없으면(ROW_COUNT=0) 직접 에러
-
--- 승인(approved_at 기록)
-UPDATE overtime_record
-SET approval_status = 'APPROVED',
-    approved_at = NOW(),
-    updated_at = NOW()
-WHERE overtime_id = 1;
-
--- 대상이 없었는지 확인
-SELECT ROW_COUNT() AS affected_rows;
-
-SELECT * FROM overtime_record WHERE overtime_id = 1;
-
--- 반려 예시
-UPDATE overtime_record
-SET approval_status = 'REJECTED',
-    approved_at = NOW(),
-    updated_at = NOW()
-WHERE overtime_id = 1;
-
-SELECT * FROM overtime_record WHERE overtime_id = 1;
-
-
-
--- 휴가 신청 등록 (요구사항 코드 : INOUT_004)
-INSERT INTO leave_request (
-    emp_id, leave_type_id, start_date, end_date, reason, use_days, approval_status
-) VALUES (
-    1,
-    1, -- 연차
-    '2026-02-03',
-    '2026-02-03',
-    '개인 사유',
-    1.0,
-    'PENDING'
-);
-
-SELECT * FROM leave_request WHERE emp_id = 1 ORDER BY leave_request_id DESC;
-
--- 휴가신청 취소
--- 승인 전(PENDING)일 때만 취소 가능
-UPDATE leave_request
-SET approval_status = 'CANCELED',
-    updated_at = NOW()
-WHERE leave_request_id = 1
-  AND approval_status = 'PENDING';
-
-SELECT * FROM leave_request WHERE leave_request_id = 1;
-
--- 휴가 승인(프로시저) (요구사항 코드 : INOUT_004) - 안정화버전
--- SQLEXCEPTION: GET DIAGNOSTICS로 원문 메시지 전달 (CONCAT 없음)
---  NOT FOUND: 신청 자체가 없을 때 명확히 에러
---  ROW_COUNT: PENDING이 아니면 승인 실패 처리
-
-DROP PROCEDURE IF EXISTS approve_leave_request;
-
+-- 결근/휴가 기록
 DELIMITER $$
-
-CREATE PROCEDURE approve_leave_request (
-    IN p_leave_request_id BIGINT
+CREATE OR REPLACE PROCEDURE attendance_finalize_daily (
+    IN p_work_date DATE
 )
 BEGIN
-    DECLARE v_use_days DECIMAL(3,1);
+    DECLARE v_absent_status_id BIGINT;
+    DECLARE v_leave_status_id  BIGINT;
 
-    -- diagnostics
-    DECLARE v_sqlstate CHAR(5) DEFAULT '00000';
+    DECLARE v_sqlstate CHAR(5);
     DECLARE v_errmsg TEXT;
 
-    -- 조회 결과 없음(leave_request_id 자체가 없음)
-    DECLARE EXIT HANDLER FOR NOT FOUND
-    BEGIN
-        ROLLBACK;
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = '휴가 승인(INOUT_004) 실패: 해당 휴가 신청을 찾을 수 없습니다.';
-    END;
-
-    -- DB 예외 원문 그대로 던지기
+    -- 공통 에러 핸들러
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         GET DIAGNOSTICS CONDITION 1
             v_sqlstate = RETURNED_SQLSTATE,
             v_errmsg   = MESSAGE_TEXT;
         ROLLBACK;
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_errmsg;
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = v_errmsg;
     END;
 
     START TRANSACTION;
 
-    -- use_days 확보 (없으면 NOT FOUND로 위 핸들러)
-    SELECT use_days INTO v_use_days
+    -- 결근 상태 ID
+    SELECT status_id
+      INTO v_absent_status_id
+      FROM attendance_status
+     WHERE status_code = 'ABSENT'
+       AND use_yn = 'Y';
+
+    -- 휴가 상태 ID
+    SELECT status_id
+      INTO v_leave_status_id
+      FROM attendance_status
+     WHERE status_code = 'LEAVE'
+       AND use_yn = 'Y';
+
+    -- 휴가 처리
+    INSERT INTO attendance_record (
+        emp_id,
+        work_date,
+        status_check_in,
+        created_at,
+        updated_at
+    )
+    SELECT
+        e.emp_id,
+        p_work_date,
+        v_leave_status_id,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    FROM employee e
+    JOIN leave_request lr
+      ON lr.emp_id = e.emp_id
+     AND lr.approval_status = 'APPROVED'
+     AND p_work_date BETWEEN lr.start_date AND lr.end_date
+    LEFT JOIN attendance_record ar
+      ON ar.emp_id = e.emp_id
+     AND ar.work_date = p_work_date
+    WHERE ar.attendance_id IS NULL;
+
+    -- 결근 처리
+    INSERT INTO attendance_record (
+        emp_id,
+        work_date,
+        status_check_in,
+        created_at,
+        updated_at
+    )
+    SELECT
+        e.emp_id,
+        p_work_date,
+        v_absent_status_id,
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    FROM employee e
+    LEFT JOIN attendance_record ar
+      ON ar.emp_id = e.emp_id
+     AND ar.work_date = p_work_date
+    LEFT JOIN leave_request lr
+      ON lr.emp_id = e.emp_id
+     AND lr.approval_status = 'APPROVED'
+     AND p_work_date BETWEEN lr.start_date AND lr.end_date
+    WHERE ar.attendance_id IS NULL
+      AND lr.leave_request_id IS NULL;
+    COMMIT;
+END$$
+DELIMITER ;
+
+CALL attendance_finalize_daily('2026-02-07');
+
+
+
+-- 출퇴근 기록 조회 (요구사항 코드 : INOUT_002)
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE attendance_record_select(
+    IN p_emp_id BIGINT,
+    IN p_dept_id BIGINT,
+    IN p_start_date DATE,
+    IN p_end_date DATE
+)
+BEGIN
+    IF p_emp_id IS NOT NULL THEN
+        SELECT *
+        FROM attendance_record
+        WHERE emp_id = p_emp_id
+          AND work_date BETWEEN p_start_date AND p_end_date
+        ORDER BY work_date;
+    ELSEIF p_dept_id IS NOT NULL THEN
+        SELECT ar.*
+        FROM attendance_record ar
+        JOIN employee e ON ar.emp_id = e.emp_id
+        WHERE e.dept_id = p_dept_id
+          AND ar.work_date BETWEEN p_start_date AND p_end_date
+        ORDER BY ar.work_date;
+    ELSE
+        SELECT *
+        FROM attendance_record
+        WHERE work_date BETWEEN p_start_date AND p_end_date
+        ORDER BY work_date;
+    END IF;
+END$$
+DELIMITER ;
+
+-- 개인 조회
+CALL attendance_record_select(2, NULL, '2026-01-01', '2026-01-31');
+-- 부서 조회
+CALL attendance_record_select(NULL, 3, '2026-01-01', '2026-01-31');
+-- 기간 조회
+CALL attendance_record_select(NULL, NULL, '2026-01-01', '2026-01-31');
+
+
+
+-- 초과근무 기록 등록 (요구사항 코드 : INOUT_003)
+DELIMITER $$
+CREATE PROCEDURE overtime_record_create (
+    IN p_emp_id BIGINT,
+    IN p_work_date DATE,
+    IN p_overtime_minutes INT,
+    IN p_overtime_type VARCHAR(20) 
+)
+BEGIN
+    INSERT INTO overtime_record (
+        emp_id,
+        work_date,
+        overtime_minutes,
+        approval_status,
+        overtime_type,
+        created_at,
+        updated_at
+    ) VALUES (
+        p_emp_id,
+        p_work_date,
+        p_overtime_minutes,
+        'PENDING',
+        p_overtime_type,
+        NOW(),
+        NOW()
+    );
+END$$
+DELIMITER ;
+
+CALL overtime_record_create(1, '2026-01-19', 120, 'EXTEND');
+
+
+
+-- 초과근무 승인/반려 (요구사항 코드 : INOUT_003)
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE overtime_record_decide (
+    IN p_overtime_id BIGINT,
+    IN p_decision VARCHAR(10) -- APPROVED / REJECTED
+)
+BEGIN
+    -- 상태값 검증
+    IF p_decision NOT IN ('APPROVED', 'REJECTED') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Invalid approval status';
+    END IF;
+
+    UPDATE overtime_record
+    SET approval_status = p_decision,
+        approved_at = NOW(),
+        updated_at = NOW()
+    WHERE overtime_id = p_overtime_id;
+
+    -- 대상 없음 → 에러
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Overtime record not found';
+    END IF;
+END$$
+DELIMITER ;
+
+-- 승인
+CALL overtime_record_decide(2, 'APPROVED');
+-- 반려
+CALL overtime_record_decide(3, 'REJECTED');
+
+
+
+-- 휴가 신청 등록 (요구사항 코드 : INOUT_004)
+DELIMITER $$
+CREATE PROCEDURE leave_request_create (
+    IN p_emp_id BIGINT,
+    IN p_leave_type_id BIGINT,
+    IN p_start_date DATE,
+    IN p_end_date DATE,
+    IN p_reason VARCHAR(255),
+    IN p_use_days DECIMAL(3,1)
+)
+BEGIN
+    INSERT INTO leave_request (
+        emp_id,
+        leave_type_id,
+        start_date,
+        end_date,
+        reason,
+        use_days,
+        approval_status,
+        created_at,
+        updated_at
+    ) VALUES (
+        p_emp_id,
+        p_leave_type_id,
+        p_start_date,
+        p_end_date,
+        p_reason,
+        p_use_days,
+        'PENDING',
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+    );
+END$$overtime_record
+DELIMITER ;
+
+CALL leave_request_create(2, 1, '2026-02-03', '2026-02-03', '개인사유', 1.0);
+CALL leave_request_create(3, 1, '2026-02-03', '2026-02-03', '개인사유', 0.5);
+CALL leave_request_create(3, 4, '2026-02-05', '2026-02-07', '예비군', 3);
+CALL leave_request_create(3, 4, '2026-02-06', '2026-02-08', '예비군', 3);
+
+-- 휴가신청 취소
+-- 승인 전(PENDING)일 때만 취소 가능
+DELIMITER $$
+CREATE PROCEDURE leave_request_cancel (
+    IN p_leave_request_id BIGINT
+)
+BEGIN
+    UPDATE leave_request
+    SET approval_status = 'CANCELED',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE leave_request_id = p_leave_request_id
+      AND approval_status = 'PENDING';
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT =
+            '휴가 취소(INOUT_004) 실패: PENDING 상태인 요청만 취소할 수 있습니다.';
+    END IF;
+END$$
+DELIMITER ;
+
+CALL leave_request_cancel(3);
+
+-- 휴가 승인
+DELIMITER $$
+CREATE PROCEDURE leave_request_approve (
+    IN p_leave_request_id BIGINT
+)
+BEGIN
+    DECLARE v_use_days DECIMAL(3,1);
+    DECLARE v_errmsg TEXT;
+
+    DECLARE EXIT HANDLER FOR NOT FOUND
+    BEGIN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT =
+            '휴가 승인(INOUT_004) 실패: 해당 휴가 신청을 찾을 수 없습니다.';
+    END;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        GET DIAGNOSTICS CONDITION 1
+            v_errmsg = MESSAGE_TEXT;
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = v_errmsg;
+    END;
+
+    START TRANSACTION;
+
+    SELECT use_days
+    INTO v_use_days
     FROM leave_request
     WHERE leave_request_id = p_leave_request_id;
 
-    -- PENDING -> APPROVED
     UPDATE leave_request
     SET approval_status = 'APPROVED',
         updated_at = CURRENT_TIMESTAMP
     WHERE leave_request_id = p_leave_request_id
       AND approval_status = 'PENDING';
 
-    -- 이미 APPROVED/REJECTED/CANCELED면 업데이트 0건 -> 실패 처리
     IF ROW_COUNT() = 0 THEN
         ROLLBACK;
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = '휴가 승인(INOUT_004) 실패: PENDING 상태인 요청만 승인할 수 있습니다.';
+        SET MESSAGE_TEXT =
+            '휴가 승인(INOUT_004) 실패: PENDING 상태인 요청만 승인할 수 있습니다.';
     END IF;
 
-    -- 승인 성공 시에만 이력 생성 (leave_request_id UNIQUE면 중복 방지)
     INSERT INTO leave_history (leave_request_id, use_days)
     VALUES (p_leave_request_id, v_use_days);
-
     COMMIT;
 END$$
 DELIMITER ;
 
-CALL approve_leave_request(1);
-SELECT * FROM leave_request WHERE leave_request_id = 1;
-SELECT * FROM leave_history WHERE leave_request_id = 1;
+CALL leave_request_approve(4);
 
 
 
+-- 근태 기록 수정 (요구사항 코드 : INOUT_005)
+DELIMITER $$
+CREATE OR REPLACE PROCEDURE attendance_record_update (
+    IN p_attendance_id BIGINT,
+    IN p_check_in_status_code  VARCHAR(30),
+    IN p_check_out_status_code VARCHAR(30)
+)
+BEGIN
+    DECLARE v_check_in_status_id  BIGINT;
+    DECLARE v_check_out_status_id BIGINT;
 
--- 근태 기록 수정 (관리자 강제 수정) (요구사항 코드 : INOUT_005)
-UPDATE attendance_record ar
-JOIN attendance_status s ON s.status_code = 'ABSENT'
-SET ar.status_id = s.status_id,
-    ar.updated_at = CURRENT_TIMESTAMP
-WHERE ar.emp_id = 1
-  AND ar.work_date = '2026-01-20';
+    IF p_check_in_status_code IS NULL
+       AND p_check_out_status_code IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '근태 수정 실패: 변경할 상태가 없습니다.';
+    END IF;
 
-SELECT * FROM attendance_record WHERE emp_id = 1 AND work_date = '2026-01-20';
+    IF p_check_in_status_code IS NOT NULL THEN
+        SELECT status_id
+        INTO v_check_in_status_id
+        FROM attendance_status
+        WHERE status_code = p_check_in_status_code;
+    END IF;
+
+    IF p_check_out_status_code IS NOT NULL THEN
+        SELECT status_id
+        INTO v_check_out_status_id
+        FROM attendance_status
+        WHERE status_code = p_check_out_status_code;
+    END IF;
+
+    UPDATE attendance_record
+    SET
+        status_check_in  = COALESCE(v_check_in_status_id,  status_check_in),
+        status_check_out = COALESCE(v_check_out_status_id, status_check_out),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE attendance_id = p_attendance_id;
+
+    IF ROW_COUNT() = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '근태 수정 실패: 해당 근태 기록을 찾을 수 없습니다.';
+    END IF;
+END$$
+DELIMITER ;
+
+CALL attendance_record_update(8, 'LATE', NULL);
 
 
 
+-- 개인 근태 이력 조회 (요구사항 코드 : CHECK_001)
+DELIMITER $$
+CREATE PROCEDURE attendance_record_find_by_emp (
+    IN p_emp_id BIGINT
+)
+BEGIN
+    SELECT
+        e.emp_id,
+        e.`name`,
+        ar.work_date,
+        wt.work_type_name,
+        s_in.status_name  AS check_in_status,
+        ar.check_in_time,
+        s_out.status_name AS check_out_status,
+        ar.check_out_time
+    FROM attendance_record ar
+    JOIN employee e
+      ON ar.emp_id = e.emp_id
+    JOIN work_type wt
+      ON ar.work_type_id = wt.work_type_id
+    LEFT JOIN attendance_status s_in
+      ON ar.status_check_in = s_in.status_id
+    LEFT JOIN attendance_status s_out
+      ON ar.status_check_out = s_out.status_id
+    WHERE ar.emp_id = p_emp_id
+    ORDER BY ar.work_date;
+END$$
+DELIMITER ;
 
--- ==============================================================
--- CHECK (근태조회 및 통계)
--- ==============================================================
--- 개인별 근태 이력 통합 조회 (요구사항 코드 : CHECK_001)
-SELECT
-    e.emp_id,
-    e.`name`,
-    ar.work_date,
-    wt.work_type_name,
-    s.status_name,
-    ar.check_in_time,
-    ar.check_out_time
-FROM attendance_record ar
-JOIN employee e ON ar.emp_id = e.emp_id
-JOIN work_type wt ON ar.work_type_id = wt.work_type_id
-JOIN attendance_status s ON ar.status_id = s.status_id
-WHERE ar.emp_id = 1
-ORDER BY ar.work_date;
+CALL attendance_record_find_by_emp(3);
 
--- 사원별/부서별 근태 기록 조회(부서+기간)
-SELECT
-    d.dept_name,
-    e.emp_id,
-    e.`name`,
-    ar.work_date,
-    s.status_name
-FROM attendance_record ar
-JOIN employee e ON ar.emp_id = e.emp_id
-LEFT JOIN department d ON e.dept_id = d.dept_id
-JOIN attendance_status s ON ar.status_id = s.status_id
-WHERE e.dept_id = 1
-  AND ar.work_date BETWEEN '2026-01-01' AND '2026-01-31'
-ORDER BY e.emp_id, ar.work_date;
 
--- 부서/개인 근태 통계 (부서별 지각/결석) (요구사항 코드 : CHECK_003)
-SELECT
-    d.dept_name,
-    SUM(CASE WHEN s.status_code = 'LATE' THEN 1 ELSE 0 END)   AS late_count,
-    SUM(CASE WHEN s.status_code = 'ABSENT' THEN 1 ELSE 0 END) AS absent_count,
-    COUNT(*) AS total_days
-FROM attendance_record ar
-JOIN employee e ON ar.emp_id = e.emp_id
-LEFT JOIN department d ON e.dept_id = d.dept_id
-JOIN attendance_status s ON ar.status_id = s.status_id
-WHERE ar.work_date BETWEEN '2026-01-01' AND '2026-01-31'
-GROUP BY d.dept_id, d.dept_name
-ORDER BY d.dept_name;
+
+-- 특정 부서 사원들의  N 월 근태 기록 조회
+DELIMITER $$
+CREATE PROCEDURE attendance_record_find_by_dept_period (
+    IN p_dept_id BIGINT,
+    IN p_start_date DATE,
+    IN p_end_date DATE
+)
+BEGIN
+    SELECT
+        d.dept_name,
+        e.emp_id,
+        e.`name`,
+        ar.work_date,
+        s_in.status_name AS check_in_status
+    FROM attendance_record ar
+    JOIN employee e
+      ON ar.emp_id = e.emp_id
+    LEFT JOIN department d
+      ON e.dept_id = d.dept_id
+    LEFT JOIN attendance_status s_in
+      ON ar.status_check_in = s_in.status_id
+    WHERE e.dept_id = p_dept_id
+      AND ar.work_date BETWEEN p_start_date AND p_end_date
+    ORDER BY e.emp_id, ar.work_date;
+END$$
+DELIMITER ;
+
+CALL attendance_record_find_by_dept_period(3, '2026-01-01', '2026-01-31');
+
+
+
+-- 부서 근태 통계
+DELIMITER $$
+CREATE PROCEDURE attendance_stats_by_dept (
+    IN p_start_date DATE,
+    IN p_end_date   DATE
+)
+BEGIN
+    SELECT
+        d.dept_name,
+        
+        /* 출근 기준 */
+        SUM(CASE WHEN s_in.status_code = 'NORMAL' THEN 1 ELSE 0 END) AS 정상출근,
+        SUM(CASE WHEN s_in.status_code = 'LATE'   THEN 1 ELSE 0 END) AS 지각,
+        SUM(CASE WHEN s_in.status_code = 'ABSENT' THEN 1 ELSE 0 END) AS 결근,
+
+        /* 퇴근 기준 */
+        SUM(CASE WHEN s_out.status_code = 'NORMAL' THEN 1 ELSE 0 END) AS 정상퇴근,
+        SUM(CASE WHEN s_out.status_code = 'EARLY'  THEN 1 ELSE 0 END) AS 조퇴,
+        SUM(CASE WHEN ar.status_check_out IS NULL  THEN 1 ELSE 0 END) AS 퇴근미기록,
+
+        COUNT(*) AS 총근태일수
+    FROM attendance_record ar
+    JOIN employee e ON ar.emp_id = e.emp_id
+    LEFT JOIN department d ON e.dept_id = d.dept_id
+    LEFT JOIN attendance_status s_in
+           ON ar.status_check_in = s_in.status_id
+    LEFT JOIN attendance_status s_out
+           ON ar.status_check_out = s_out.status_id
+    WHERE ar.work_date BETWEEN p_start_date AND p_end_date
+    GROUP BY d.dept_id, d.dept_name
+    ORDER BY d.dept_name;
+END$$
+DELIMITER ;
+
+CALL attendance_stats_by_dept('2026-01-01', '2026-01-31');
+

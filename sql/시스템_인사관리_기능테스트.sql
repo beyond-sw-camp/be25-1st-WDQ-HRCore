@@ -546,7 +546,7 @@ CALL emp_assign_department(
 
 -- 부서 이동 (요구사항 코드: dept_assign_002)
 DELIMITER $$
-CREATE PROCEDURE emp_change_department (
+CREATE OR REPLACE PROCEDURE emp_change_department (
     IN p_emp_id BIGINT,
     IN p_new_dept_id BIGINT,
     IN p_admin_id BIGINT
@@ -582,11 +582,7 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL emp_change_department(
-    4,     
-    3,      
-    3
-);
+CALL emp_change_department(3, 3, 2);
 
 
 

@@ -139,7 +139,7 @@ CREATE TABLE emp_status_history (
 CREATE TABLE attendance_record (
     attendance_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     emp_id BIGINT NOT NULL,
-    work_type_id BIGINT NOT NULL,
+    work_type_id BIGINT,
     status_check_in BIGINT,
     status_check_out BIGINT,
     work_date DATE NOT NULL,
