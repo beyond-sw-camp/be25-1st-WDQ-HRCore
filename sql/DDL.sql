@@ -51,7 +51,9 @@ CREATE TABLE leave_annual_policy (
     min_years INT NOT NULL,              
     max_years INT NOT NULL,              
     annual_max_days INT NOT NULL,        
-    use_yn CHAR(1) NOT NULL DEFAULT 'Y'  
+    use_yn CHAR(1) NOT NULL DEFAULT 'Y',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP  
 );
 
 CREATE TABLE pay_item (
