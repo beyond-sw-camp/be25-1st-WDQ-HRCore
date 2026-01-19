@@ -128,6 +128,16 @@ CALL register_employee_with_user(
     '2021-02-05'
 );
 
+CALL register_employee_with_user(
+    'test02.dev@company.com',
+    '테스트사원02',
+    '010-1235-5778',
+    '950104-1353427',
+    '국민',
+    '106-2569-413677',
+    '2024-02-04'
+);
+
 -- 확인
 SELECT * FROM employee;
 SELECT * FROM `user`;
@@ -527,8 +537,8 @@ END$$
 DELIMITER ;
 
 CALL emp_assign_department(
-    2,  -- emp_id
-    1,  -- dept_id
+    3,  -- emp_id
+    4,  -- dept_id
     2  -- admin user_id
 );
 
@@ -666,7 +676,7 @@ END$$
 DELIMITER ;
 
 CALL emp_assign_position(
-    2,      -- emp_id
+    3,      -- emp_id
     2,      -- position_id (예: 과장)
     2       -- admin user_id
 );
