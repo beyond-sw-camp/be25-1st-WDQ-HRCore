@@ -187,7 +187,7 @@ CREATE TABLE leave_request (
     reason TEXT,
     reject_reason TEXT, 
     use_days DECIMAL(3,1) CHECK (use_days >= 0),
-    approval_status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    approval_status ENUM('PENDING','APPROVED','REJECTED','CANCELED') NOT NULL DEFAULT 'PENDING',
     decided_by BIGINT NULL,
     decided_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
