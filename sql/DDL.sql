@@ -201,6 +201,8 @@ CREATE TABLE leave_request (
       (approval_status = 'APPROVED')
       OR
       (approval_status = 'REJECTED')
+      OR
+      (approval_status = 'CANCELED')
     )
 );
 
