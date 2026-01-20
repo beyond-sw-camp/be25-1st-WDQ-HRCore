@@ -178,6 +178,8 @@ LEFT JOIN leave_annual_policy lap
 
 
 -- 출근 기록 등록 (요구사항 코드: INOUT_001)
+DROP PROCEDURE IF EXISTS check_in;
+
 DELIMITER $$
 CREATE OR REPLACE PROCEDURE check_in (
     IN p_emp_id BIGINT,
@@ -188,48 +190,72 @@ CREATE OR REPLACE PROCEDURE check_in (
 BEGIN
     DECLARE v_start_time TIME;
     DECLARE v_status_check_in_id BIGINT;
+    DECLARE v_exists BIGINT;
 
-    DECLARE v_sqlstate CHAR(5) DEFAULT '00000';
-    DECLARE v_errmsg TEXT DEFAULT '';
+    DECLARE v_errmsg TEXT;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        GET DIAGNOSTICS CONDITION 1 
-            v_sqlstate = RETURNED_SQLSTATE, 
-            v_errmsg = MESSAGE_TEXT;
+        GET DIAGNOSTICS CONDITION 1 v_errmsg = MESSAGE_TEXT;
         ROLLBACK;
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_errmsg; 
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_errmsg;
     END;
     
     START TRANSACTION;
     
-    -- 근무 유형 기준 출근 시간 조회
-    SELECT start_time
-      INTO v_start_time
-      FROM work_type
-     WHERE work_type_id = p_work_type_id;
+    -- 1) 이미 출근 기록 존재 여부(중복 방지)
+    SELECT attendance_id INTO v_exists
+    FROM attendance_record
+    WHERE emp_id = p_emp_id AND work_date = p_work_date
+    LIMIT 1;
 
-    -- 출근 상태 판정
-    IF v_start_time IS NULL THEN
-        SELECT status_id INTO v_status_check_in_id
-          FROM attendance_status
-         WHERE status_code = 'NORMAL';
-    ELSEIF TIME(p_check_in_time) > v_start_time THEN
-        SELECT status_id INTO v_status_check_in_id
-          FROM attendance_status
-         WHERE status_code = 'LATE';
-    ELSE
-        SELECT status_id INTO v_status_check_in_id
-          FROM attendance_status
-         WHERE status_code = 'NORMAL';
+    IF v_exists IS NOT NULL THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '출근 등록 실패: 이미 해당 날짜의 근태 기록이 존재합니다.';
     END IF;
 
-    -- 출근 기록 삽입 (출근 상태만 기록)
+    -- 2) 근무유형 존재 검증 + 시작시간 조회
+    SELECT start_time INTO v_start_time
+    FROM work_type
+    WHERE work_type_id = p_work_type_id;
+
+    IF ROW_COUNT() = 0 THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '출근 등록 실패: 유효하지 않은 work_type_id 입니다.';
+    END IF;
+
+    -- 3) 상태 판정
+    IF v_start_time IS NULL THEN
+        SELECT status_id INTO v_status_check_in_id
+        FROM attendance_status
+        WHERE status_code = 'NORMAL' AND use_yn='Y';
+    ELSEIF TIME(p_check_in_time) > v_start_time THEN
+        SELECT status_id INTO v_status_check_in_id
+        FROM attendance_status
+        WHERE status_code = 'LATE' AND use_yn='Y';
+    ELSE
+        SELECT status_id INTO v_status_check_in_id
+        FROM attendance_status
+        WHERE status_code = 'NORMAL' AND use_yn='Y';
+    END IF;
+
+    IF v_status_check_in_id IS NULL THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '출근 등록 실패: 근태 상태코드(NORMAL/LATE)가 존재하지 않습니다.';
+    END IF;
+
+    -- 4) 출근 기록 삽입
     INSERT INTO attendance_record (
-        emp_id, work_type_id, status_check_in, work_date, check_in_time
+        emp_id, work_type_id, status_check_in, work_date, check_in_time,
+        created_at, updated_at
     ) VALUES (
-        p_emp_id, p_work_type_id, v_status_check_in_id, p_work_date, p_check_in_time
+        p_emp_id, p_work_type_id, v_status_check_in_id, p_work_date, p_check_in_time,
+        NOW(), NOW()
     );
+
     COMMIT;
 END$$
 DELIMITER ;
@@ -255,15 +281,12 @@ BEGIN
     DECLARE v_status_early_id BIGINT;
     DECLARE v_check_out_status BIGINT;
 
-    DECLARE v_sqlstate CHAR(5) DEFAULT '00000';
-    DECLARE v_errmsg TEXT DEFAULT '';
+    DECLARE v_errmsg TEXT;
 
     -- 에러 핸들러
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
-        GET DIAGNOSTICS CONDITION 1
-            v_sqlstate = RETURNED_SQLSTATE,
-            v_errmsg   = MESSAGE_TEXT;
+        GET DIAGNOSTICS CONDITION 1 v_errmsg   = MESSAGE_TEXT;
         ROLLBACK;
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_errmsg;
     END;
@@ -271,16 +294,25 @@ BEGIN
     START TRANSACTION;
 
     -- 출근 기록 확인
-    SELECT attendance_id, work_type_id INTO v_attendance_id, v_work_type_id
+    SELECT attendance_id, work_type_id 
+	 INTO v_attendance_id, v_work_type_id
     FROM attendance_record
     WHERE emp_id = p_emp_id
       AND work_date = p_work_date
     LIMIT 1;
 
     IF v_attendance_id IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '퇴근 등록 실패: 출근 기록이 없습니다.';
+   	  ROLLBACK;
+        SIGNAL SQLSTATE '45000' 
+		  		SET MESSAGE_TEXT = '퇴근 등록 실패: 출근 기록이 없습니다.';
     END IF;
-
+    
+	 IF (SELECT check_out_time FROM attendance_record WHERE attendance_id = v_attendance_id) IS NOT NULL THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '퇴근 등록 실패: 이미 퇴근 처리되었습니다.';
+    END IF;
+    
     -- 퇴근 기준 시간 조회
     SELECT end_time INTO v_end_time
     FROM work_type
@@ -289,11 +321,17 @@ BEGIN
     -- 상태코드 조회
     SELECT status_id INTO v_status_normal_id
     FROM attendance_status
-    WHERE status_code = 'NORMAL';
+    WHERE status_code = 'NORMAL' AND use_yn='Y';
 
     SELECT status_id INTO v_status_early_id
     FROM attendance_status
-    WHERE status_code = 'EARLY';
+    WHERE status_code = 'EARLY' AND use_yn='Y';
+    
+     IF v_status_normal_id IS NULL OR v_status_early_id IS NULL THEN
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '퇴근 등록 실패: 근태 상태코드(NORMAL/EARLY)가 존재하지 않습니다.';
+    END IF;
 
     -- 퇴근 상태 결정
     IF v_end_time IS NOT NULL AND TIME(p_check_out_time) < v_end_time THEN
@@ -308,6 +346,7 @@ BEGIN
         status_check_out = v_check_out_status,
         updated_at = NOW()
     WHERE attendance_id = v_attendance_id;
+    
     COMMIT;
 END$$
 DELIMITER ;
