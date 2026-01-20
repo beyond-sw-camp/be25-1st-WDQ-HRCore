@@ -4,6 +4,14 @@
   <img src="https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/WDQlogo.png?raw=true" width="500px">
 </p>
 
+<div align="center">
+흩어진 HR 업무를 하나로 
+효율을 높이는 통합 HR 관리 플랫폼
+  
+***HRCORE_project***
+
+</div>
+
 ## 📌 목차
 1. [👩‍👩‍👦 팀원 소개](#team)
 2. [🗃️ 프로젝트 개요](#overview)
