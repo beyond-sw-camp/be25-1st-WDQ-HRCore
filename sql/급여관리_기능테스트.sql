@@ -99,7 +99,7 @@ WHERE item_type = 'EARN';
 
 
 
--- 급여 명세서 생성 (요구사항hrcore_dbhrcore_db 코드: PAYSLIP_001)
+-- 급여 명세서 생성 (요구사항 코드: PAYSLIP_001)
 DELIMITER $$
 CREATE OR REPLACE PROCEDURE payslip_create (
     IN p_emp_id BIGINT,
@@ -110,6 +110,11 @@ BEGIN
     DECLARE v_base_salary DECIMAL(12,0);
     DECLARE v_total_pay DECIMAL(12,0) DEFAULT 0;
     DECLARE v_total_deduct DECIMAL(12,0) DEFAULT 0;
+    DECLARE v_absence_count INT DEFAULT 0;
+    DECLARE v_late_count INT DEFAULT 0;
+    DECLARE v_early_count INT DEFAULT 0;
+    DECLARE v_total_absence INT DEFAULT 0;
+    DECLARE v_absence_item_id BIGINT;
 
     -- 예외 발생 시 롤백
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -130,18 +135,18 @@ BEGIN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = '재직 중인 사원만 급여 명세서를 생성할 수 있습니다.';
     END IF;
-    
-	 -- 중복 payslip 체크
-	 IF EXISTS (
-  		 SELECT 1
-       FROM payslip
-       WHERE emp_id = p_emp_id
-        AND pay_ym = p_pay_ym
-	 ) THEN
-	     SIGNAL SQLSTATE '45000'
-	     SET MESSAGE_TEXT = '이미 생성된 급여 명세서가 있습니다.';
-  	 END IF; 
-  	 
+
+    -- 중복 payslip 체크
+    IF EXISTS (
+        SELECT 1
+        FROM payslip
+        WHERE emp_id = p_emp_id
+          AND pay_ym = p_pay_ym
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = '이미 생성된 급여 명세서가 있습니다.';
+    END IF;
+
     -- 기본급 조회 (직급 기준)
     SELECT jp.base_salary
     INTO v_base_salary
@@ -151,77 +156,82 @@ BEGIN
     WHERE e.emp_id = p_emp_id;
 
     -- payslip 생성
-    INSERT INTO payslip (
-        emp_id,
-        pay_ym,
-        status
-    ) VALUES (
-        p_emp_id,
-        p_pay_ym,
-        'CREATED'
-    );
+    INSERT INTO payslip (emp_id, pay_ym, status)
+    VALUES (p_emp_id, p_pay_ym, 'CREATED');
 
     SET v_payslip_id = LAST_INSERT_ID();
 
     -- 기본급 항목 저장
-    INSERT INTO payslip_item (
-        payslip_id,
-        pay_item_id,
-        amount
-    )
-    SELECT
-        v_payslip_id,
-        pi.pay_item_id,
-        v_base_salary
+    INSERT INTO payslip_item (payslip_id, pay_item_id, amount)
+    SELECT v_payslip_id, pi.pay_item_id, v_base_salary
     FROM pay_item pi
     WHERE pi.pay_item_code = 'BASE_SALARY'
       AND pi.use_yn = 'Y';
 
     SET v_total_pay = v_base_salary;
 
-    -- 공제 항목 계산 (RATE 기준)
-    INSERT INTO payslip_item (
-        payslip_id,
-        pay_item_id,
-        amount
-    )
-    SELECT
-        v_payslip_id,
-        pi.pay_item_id,
-        ROUND(v_base_salary * pi.calc_value / 100, 0)
+    -- 4대보험 공제만 RATE로 계산 (결근 제외)
+    INSERT INTO payslip_item (payslip_id, pay_item_id, amount)
+    SELECT v_payslip_id, pi.pay_item_id, ROUND(v_base_salary * pi.calc_value / 100, 0)
     FROM pay_item pi
     WHERE pi.item_type = 'DEDUCT'
       AND pi.calc_type = 'RATE'
+      AND pi.pay_item_code != 'ABSENCE_DEDUCT'
       AND pi.use_yn = 'Y';
+
+    -- 결근/지각/조퇴 집계
+    SELECT
+        SUM(CASE WHEN s_in.status_code = 'ABSENT' OR s_out.status_code = 'ABSENT' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN s_in.status_code = 'LATE' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN s_out.status_code = 'EARLY' THEN 1 ELSE 0 END)
+    INTO v_absence_count, v_late_count, v_early_count
+    FROM attendance_record ar
+    LEFT JOIN attendance_status s_in  ON ar.status_check_in  = s_in.status_id
+    LEFT JOIN attendance_status s_out ON ar.status_check_out = s_out.status_id
+    WHERE ar.emp_id = p_emp_id
+      AND DATE_FORMAT(ar.work_date, '%Y-%m') = p_pay_ym;
+
+    -- 지각/조퇴 환산 후 총 결근 계산
+    SET v_total_absence = v_absence_count + FLOOR((v_late_count + v_early_count)/2);
+
+    -- 결근 공제 pay_item_id 변수에 담기
+    SELECT pay_item_id
+    INTO v_absence_item_id
+    FROM pay_item
+    WHERE pay_item_code = 'ABSENCE_DEDUCT'
+      AND use_yn = 'Y'
+    LIMIT 1;
+
+    -- 결근 공제 INSERT (중복 방지)
+    IF v_total_absence > 0 AND v_absence_item_id IS NOT NULL THEN
+        INSERT INTO payslip_item (payslip_id, pay_item_id, amount)
+        VALUES (v_payslip_id, v_absence_item_id, ROUND(v_base_salary * 0.05 * v_total_absence, 0));
+    END IF;
 
     -- 총 공제액 계산
     SELECT IFNULL(SUM(amount), 0)
     INTO v_total_deduct
     FROM payslip_item
     WHERE payslip_id = v_payslip_id
-    	AND pay_item_id IN (SELECT pay_item_id FROM pay_item WHERE item_type='DEDUCT');
+      AND pay_item_id IN (SELECT pay_item_id FROM pay_item WHERE item_type='DEDUCT');
 
     -- payslip 금액 확정
     UPDATE payslip
     SET total_pay    = v_total_pay,
         total_deduct = v_total_deduct,
-        net_pay = ROUND(v_total_pay - v_total_deduct, 0),
+        net_pay      = ROUND(v_total_pay - v_total_deduct, 0),
         updated_at   = CURRENT_TIMESTAMP
     WHERE payslip_id = v_payslip_id;
 
     -- 급여 명세 접근 정보 생성
-    INSERT INTO payslip_access (
-        payslip_id,
-        failed_count
-    ) VALUES (
-        v_payslip_id,
-        0
-    );
+    INSERT INTO payslip_access (payslip_id, failed_count)
+    VALUES (v_payslip_id, 0);
+
     COMMIT;
 END$$
 DELIMITER ;
 
-CALL payslip_create(2, '2026-01');
+CALL payslip_create(1, '2026-01');
 
 -- 확인
 SELECT * FROM employee;
@@ -265,7 +275,7 @@ BEGIN
 END $$
 DELIMITER ;
 
-CALL payslip_confirm(1);
+CALL payslip_confirm(10);
 
 -- 확인
 SELECT * FROM payslip;
@@ -320,7 +330,7 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL payslip_view_admin(1);
+CALL payslip_view_admin(10);
 
 
 
