@@ -1,9 +1,3 @@
-CREATE DATABASE hr_system
-    DEFAULT CHARACTER SET utf8mb4
-    COLLATE utf8mb4_general_ci;
-
-USE hr_system;
-
 CREATE TABLE department (
     dept_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     dept_code VARCHAR(20) NOT NULL UNIQUE,
@@ -199,7 +193,6 @@ CREATE TABLE leave_request (
     approved_at DATETIME NULL,
     rejected_by BIGINT NULL,
     rejected_at DATETIME NULL,
-    approval_status VARCHAR(20),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (emp_id) REFERENCES employee(emp_id),
