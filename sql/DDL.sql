@@ -162,20 +162,18 @@ CREATE TABLE overtime_record (
     reason TEXT,
     reject_reason TEXT,
     approval_status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
-    approved_by BIGINT NULL,
-	 approved_at DATETIME NULL,
-	 rejected_by BIGINT NULL,
-    rejected_at DATETIME NULL,
     overtime_type VARCHAR(20),
+    created_by BIGINT ,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (emp_id) REFERENCES employee(emp_id),
+    FOREIGN KEY (created_by) REFERENCES employee(emp_id),
     CHECK (
-      (approval_status = 'PENDING'  AND approved_at IS NULL AND rejected_at IS NULL)
+      (approval_status = 'PENDING')
       OR
-      (approval_status = 'APPROVED' AND approved_at IS NOT NULL AND rejected_at IS NULL)
+      (approval_status = 'APPROVED')
       OR
-      (approval_status = 'REJECTED' AND rejected_at IS NOT NULL AND approved_at IS NULL)
+      (approval_status = 'REJECTED')
     )
 );
 

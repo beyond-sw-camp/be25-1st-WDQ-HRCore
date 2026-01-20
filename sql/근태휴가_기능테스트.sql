@@ -260,8 +260,8 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL check_in(2, 1, '2026-01-20', '2026-01-20 08:50:00');
-CALL check_in(3, 1, '2026-01-20', '2026-01-20 09:10:00');
+CALL check_in(2, 1, '2026-01-26', '2026-01-26 08:50:00');
+CALL check_in(3, 1, '2026-01-27', '2026-01-27 09:10:00');
 
    
 
@@ -351,8 +351,8 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL check_out(2, '2026-01-20', '2026-01-20 18:20:00');    
-CALL check_out(3, '2026-01-20', '2026-01-20 18:00:00');    
+CALL check_out(2, '2026-01-26', '2026-01-26 23:20:00');    
+CALL check_out(3, '2026-01-27', '2026-01-28 02:00:00');    
 
 
 
@@ -458,36 +458,77 @@ DELIMITER $$
 CREATE OR REPLACE PROCEDURE overtime_record_create (
     IN p_emp_id BIGINT,
     IN p_work_date DATE,
-    IN p_overtime_minutes INT,
-    IN p_overtime_type VARCHAR(20),
     IN p_reason TEXT
 )
 BEGIN
-	 IF p_overtime_minutes IS NULL OR p_overtime_minutes <= 0 THEN
+    DECLARE v_check_in DATETIME;
+    DECLARE v_check_out DATETIME;
+    DECLARE v_extend_minutes INT DEFAULT 0;
+    DECLARE v_night_minutes INT DEFAULT 0;
+    DECLARE v_work_start DATETIME;
+    DECLARE v_work_end DATETIME;
+
+    -- 근태 기록 조회
+    SELECT check_in_time, check_out_time
+    INTO v_check_in, v_check_out
+    FROM attendance_record
+    WHERE emp_id = p_emp_id
+      AND work_date = p_work_date
+    LIMIT 1;
+
+    IF v_check_in IS NULL OR v_check_out IS NULL THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = '초과근무 신청 실패: overtime_minutes는 1 이상이어야 합니다.';
+            SET MESSAGE_TEXT = '근태 기록이 없거나 퇴근 시간이 기록되지 않았습니다.';
     END IF;
 
     IF p_reason IS NULL OR LENGTH(TRIM(p_reason)) = 0 THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = '초과근무 신청 실패: reason은 필수입니다.';
+            SET MESSAGE_TEXT = 'reason은 필수 입력값입니다.';
     END IF;
-    
-    INSERT INTO overtime_record (
-        emp_id, work_date, overtime_minutes,
-        reason,
-        approval_status, overtime_type,
-        created_at, updated_at
-    ) VALUES (
-        p_emp_id, p_work_date, p_overtime_minutes,
-        p_reason,
-        'PENDING', p_overtime_type,
-        NOW(), NOW()
-    );
+
+    -- 연장근무: 18:00~22:00
+    SET v_work_start = DATE_ADD(p_work_date, INTERVAL 18 HOUR);
+    SET v_work_end   = DATE_ADD(p_work_date, INTERVAL 22 HOUR);
+    SET v_extend_minutes = GREATEST(0, TIMESTAMPDIFF(MINUTE, GREATEST(v_check_in, v_work_start), LEAST(v_check_out, v_work_end)));
+
+    -- 야간근무: 22:00~06:00
+    SET v_work_start = DATE_ADD(p_work_date, INTERVAL 22 HOUR);
+    SET v_work_end   = DATE_ADD(DATE_ADD(p_work_date, INTERVAL 1 DAY), INTERVAL 6 HOUR);
+    SET v_night_minutes = GREATEST(0, TIMESTAMPDIFF(MINUTE, GREATEST(v_check_in, v_work_start), LEAST(v_check_out, v_work_end)));
+
+    -- 연장근무 INSERT
+    IF v_extend_minutes > 0 THEN
+        INSERT INTO overtime_record (
+            emp_id, work_date, overtime_minutes,
+            reason, approval_status, overtime_type,
+            created_at, updated_at
+        )
+        VALUES (
+            p_emp_id, p_work_date, v_extend_minutes,
+            p_reason, 'PENDING', 'EXTEND',
+            NOW(), NOW()
+        );
+    END IF;
+
+    -- 야간근무 INSERT
+    IF v_night_minutes > 0 THEN
+        INSERT INTO overtime_record (
+            emp_id, work_date, overtime_minutes,
+            reason, approval_status, overtime_type,
+            created_at, updated_at
+        )
+        VALUES (
+            p_emp_id, p_work_date, v_night_minutes,
+            p_reason, 'PENDING', 'NIGHT',
+            NOW(), NOW()
+        );
+    END IF;
 END$$
 DELIMITER ;
 
-CALL overtime_record_create(1, '2026-01-19', 120, 'EXTEND', '배포 대응으로 연장근무 필요');
+CALL overtime_record_create(3, '2026-01-29', '야간근무 포함 연장근무');
+
+
 
 -- 초과근무 승인 (요구사항 코드 : INOUT_003)
 DELIMITER $$
@@ -498,11 +539,7 @@ CREATE OR REPLACE PROCEDURE overtime_record_approve (
 BEGIN
     UPDATE overtime_record
     SET approval_status = 'APPROVED',
-        approved_by = p_admin_emp_id,
-        approved_at = NOW(),
-        reject_reason = NULL,
-        rejected_by = NULL,
-        rejected_at = NULL,
+        decided_by = p_admin_emp_id,
         updated_at = NOW()
     WHERE overtime_id = p_overtime_id
       AND approval_status = 'PENDING';
@@ -529,11 +566,8 @@ BEGIN
 
     UPDATE overtime_record
     SET approval_status = 'REJECTED',
-        rejected_by = p_admin_emp_id,
-        rejected_at = NOW(),
+        decided_by = p_admin_emp_id,
         reject_reason = p_reject_reason,
-        approved_by = NULL,
-        approved_at = NULL,
         updated_at = NOW()
     WHERE overtime_id = p_overtime_id
       AND approval_status = 'PENDING';
@@ -545,8 +579,8 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL overtime_record_approve(2, 1);
-CALL overtime_record_reject(3, 1, '사전 신청 누락');
+CALL overtime_record_approve(9, 1);
+CALL overtime_record_reject(10, 1, '사전 신청 누락');
 
 
 -- 휴가 신청 등록 (요구사항 코드 : INOUT_004)
