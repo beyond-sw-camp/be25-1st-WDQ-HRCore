@@ -551,7 +551,7 @@ BEGIN
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP
     );
-END$$overtime_record
+END$$
 DELIMITER ;
 
 CALL leave_request_create(2, 1, '2026-02-03', '2026-02-03', '개인사유', 1.0);
