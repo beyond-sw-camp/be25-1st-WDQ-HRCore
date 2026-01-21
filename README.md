@@ -1,5 +1,6 @@
 
 # HRCore_project📝
+
 <p align="center">
   <img src="https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/WDQlogo.png?raw=true" width="500px">
 </p>
@@ -11,6 +12,14 @@
 ***HRCORE_project***
 
 </div>
+<br>
+
+<p align="center">
+ <img src="https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%ED%8F%AC%EC%8A%A4%ED%84%B0.png?raw=true" width="700px">
+ </p>
+
+<br>
+
 
 ## 📌 목차
 1. [👩‍👩‍👦 팀원 소개](#team)
@@ -31,13 +40,6 @@
 |     팀장 박선우         |        김가영           |       조하은          |         허진호          |        이민경          |        이서윤          |
 |<p align="center"><a href="https://github.com/melly8954"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>|<p align="center"><a href="https://github.com/gahyoung920-eng"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>| <p align="center"><a href="https://github.com/haeuniiii"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>|<p align="center"><a href="https://github.com/melly8954"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>|<p align="center"><a href="https://github.com/LeeJin0801"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>|<p align="center"><a href="https://github.com/alskung1101"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>|<p align="center"><a href="https://github.com/leesy744"><img src="https://img.shields.io/badge/github-181717.svg?style=for-the-badge&logoColor=white" /></a>|
 ---
-
-## 🧩 포스터 
-<p align="center">
- <img src="https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%ED%8F%AC%EC%8A%A4%ED%84%B0.png?raw=true" width="700px">
- </p>
-
-<br>
 
 ## 🗃️ 프로젝트 개요 <a id="overview"></a>
 
