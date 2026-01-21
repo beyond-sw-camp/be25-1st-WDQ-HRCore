@@ -2271,7 +2271,7 @@ CALL check_out(3, '2026-01-27', '2026-01-28 02:00:00');
 -- 결근기록
 CALL attendance_finalize_daily('2026-01-25');
 ```
-![결근기록](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EA%B2%B0%EA%B7%BC%EA%B8%B0%EB%A1%9D%20%EB%93%B1%EB%A1%9D.png?raw=true)
+![결근기록](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EA%B2%B0%EA%B7%BC%EA%B8%B0%EB%A1%9D%20%EB%93%B1%EB%A1%9D%20new.png?raw=true)
   </details>   
    <details>
         <summary> 출퇴근 기록 조회 </summary>
@@ -2286,7 +2286,7 @@ CALL attendance_record_select(NULL, 1, '2026-01-01', '2026-01-31');
 CALL attendance_record_select(NULL, NULL, '2026-01-01', '2026-01-31');
 ```
 ![출퇴근 기록 조회(개인)](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EC%B6%9C%ED%87%B4%EA%B7%BC%EA%B8%B0%EB%A1%9D%20%EC%A1%B0%ED%9A%8C(%EA%B0%9C%EC%9D%B8%EB%B3%84).png?raw=true)
-![출퇴근 기록 조회(부서)](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EC%B6%9C%ED%87%B4%EA%B7%BC%EA%B8%B0%EB%A1%9D%20%EC%A1%B0%ED%9A%8C(%EB%B6%80%EC%84%9C%EB%B3%84).png?raw=true)
+![출퇴근 기록 조회(부서)](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EC%B6%9C%ED%87%B4%EA%B7%BC%EA%B8%B0%EB%A1%9D%EC%A1%B0%ED%9A%8C(%EB%B6%80%EC%84%9C%EB%B3%84)%20new.png?raw=true)
 ![출퇴근 기록 조회(기간)](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EC%B6%9C%ED%87%B4%EA%B7%BC%EA%B8%B0%EB%A1%9D%20%EC%A1%B0%ED%9A%8C(%EA%B8%B0%EA%B0%84%EB%B3%84).png?raw=true)
   </details>   
    <details>
@@ -2348,23 +2348,13 @@ CALL leave_request_approve(2, 1);
 ![휴가 승인](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%ED%9C%B4%EA%B0%80%20%EC%8A%B9%EC%9D%B8.png?raw=true)
   </details>   
    <details>
-        <summary> 초과근무 반려 </summary>
-
-```sql
--- 초과근무 반려
-CALL overtime_record_approve(9, 1);
-CALL overtime_record_reject(2, 3, '사전 신청 누락');
-```
-![초과근무 반려](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EC%B4%88%EA%B3%BC%EA%B7%BC%EB%AC%B4%20%EB%B0%98%EB%A0%A4.png?raw=true)
-  </details>   
-   <details>
         <summary> 휴가 반려 </summary>
 
 ```sql
 -- 휴가 반려
-CALL leave_request_reject(3, 1, '증빙 서류 미첨부');
+CALL leave_request_reject(4, 2, '증빙 서류 미첨부');
 ```
-![휴가 반려](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%ED%9C%B4%EA%B0%80%20%EB%B0%98%EB%A0%A4.png?raw=true)
+![휴가 반려](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%ED%9C%B4%EA%B0%80%20%EB%B0%98%EB%A0%A4%20new.png?raw=true)
   </details>   
    <details>
         <summary> 근태 기록 수정 </summary>
@@ -2374,7 +2364,7 @@ CALL leave_request_reject(3, 1, '증빙 서류 미첨부');
 CALL attendance_record_update(3, 'LATE', NULL);
 ```
 ![근태기록 수정 전](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EA%B7%BC%ED%83%9C%EA%B8%B0%EB%A1%9D%20%EC%88%98%EC%A0%95%EC%A0%84.png?raw=true)
-![근태기록 수정 후](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EA%B7%BC%ED%83%9C%EA%B8%B0%EB%A1%9D%20%EC%88%98%EC%A0%95%EC%A0%84.png?raw=true)
+![근태기록 수정 후](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B7%BC%ED%83%9C%ED%9C%B4%EA%B0%80%20%EC%82%AC%EC%A7%84/%EA%B7%BC%ED%83%9C%EA%B8%B0%EB%A1%9D%20%EC%88%98%EC%A0%95%ED%9B%84.png?raw=true)
   </details>  
    <details>
         <summary> 개인 근태 이력 조회 </summary>
