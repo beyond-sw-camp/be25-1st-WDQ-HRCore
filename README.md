@@ -92,7 +92,7 @@ HR 도메인은 인사 정보, 근태 기록, 휴가 정책, 급여 산정 등
 
 ## 📄 요구사항 정의서 <a id="req"></a>
 ![요구사항 정의서](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD%20%EC%A0%95%EC%9D%98%EC%84%9C.png?raw=true)
-[요구사항정의서](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD%EC%A0%95%EC%9D%98%EC%84%9C.pdf)
+[요구사항정의서](https://docs.google.com/spreadsheets/d/1O5O2yNgIskzNoShF65MBepKPR72pZ28AqnNnRsoNE4U/edit?gid=478390741#gid=478390741)
 
 <br>
 
@@ -2234,6 +2234,13 @@ CALL emp_retire(5,2,'정년 퇴직');
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9D%B8%EC%82%AC%EA%B4%80%EB%A6%AC_%EA%B8%B0%EB%8A%A5%ED%85%8C%EC%8A%A4%ED%8A%B8/%ED%87%B4%EC%A7%81%20%EC%B2%98%EB%A6%AC.png?raw=true)
   </details>   
    <details>
+        <summary> 사원의 재직상태 변경 이력</summary>
+     
+
+-- 사원의 재직상태 변경 이력
+![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9D%B8%EC%82%AC%EA%B4%80%EB%A6%AC_%EA%B8%B0%EB%8A%A5%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%9E%AC%EC%A7%81%EC%83%81%ED%83%9C%20%EB%B3%80%EA%B2%BD%20%EC%9D%B4%EB%A0%A5.png?raw=true)
+  </details>   
+   <details>
         <summary> 사원의 부서 배정</summary>
      
 ```sql
@@ -2251,6 +2258,7 @@ CALL emp_assign_department(2,1,2);
 CALL emp_change_department(2,2,2);
 ```
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9D%B8%EC%82%AC%EA%B4%80%EB%A6%AC_%EA%B8%B0%EB%8A%A5%ED%85%8C%EC%8A%A4%ED%8A%B8/%EB%B6%80%EC%84%9C%20%EC%9D%B4%EB%8F%99.png?raw=true)
+![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9D%B8%EC%82%AC%EA%B4%80%EB%A6%AC_%EA%B8%B0%EB%8A%A5%ED%85%8C%EC%8A%A4%ED%8A%B8/%EB%B6%80%EC%84%9C%20%EB%B3%80%EA%B2%BD%20%EC%9D%B4%EB%A0%A5.png?raw=true)
   </details>   
    <details>
         <summary> 사원의 직급 배정</summary>
@@ -2262,6 +2270,7 @@ CALL emp_assign_position(2,2,2);
 CALL emp_assign_position(3,2,2);
 ```
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9D%B8%EC%82%AC%EA%B4%80%EB%A6%AC_%EA%B8%B0%EB%8A%A5%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%A7%81%EA%B8%89%20%EB%B0%B0%EC%A0%95.png?raw=true)
+![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9D%B8%EC%82%AC%EA%B4%80%EB%A6%AC_%EA%B8%B0%EB%8A%A5%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%A7%81%EA%B8%89%20%EB%B3%80%EA%B2%BD%20%EC%9D%B4%EB%A0%A5.png?raw=true)
   </details>   
    <details>
         <summary> 사원의 승진 처리</summary>
