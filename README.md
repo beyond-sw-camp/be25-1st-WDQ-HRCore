@@ -92,7 +92,7 @@ HR 도메인은 인사 정보, 근태 기록, 휴가 정책, 급여 산정 등
 
 ## 📄 요구사항 정의서 <a id="req"></a>
 ![요구사항 정의서](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9D%B4%EB%AF%B8%EC%A7%80%20%ED%8C%8C%EC%9D%BC/%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD%20%EC%A0%95%EC%9D%98%EC%84%9C.png?raw=true)
-[요구사항정의서](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EC%9A%94%EA%B5%AC%EC%82%AC%ED%95%AD%EC%A0%95%EC%9D%98%EC%84%9C.pdf)
+[요구사항정의서](https://docs.google.com/spreadsheets/d/1O5O2yNgIskzNoShF65MBepKPR72pZ28AqnNnRsoNE4U/edit?gid=478390741#gid=478390741)
 
 <br>
 
