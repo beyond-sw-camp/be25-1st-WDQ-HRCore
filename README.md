@@ -426,7 +426,7 @@ CREATE TABLE payslip_access (
 ```
   </details>   
   <details>
-        <summary>payslip_item</summary>
+        <summary>pay_item</summary>
         
 ```sql
 CREATE TABLE pay_item (
@@ -2429,11 +2429,11 @@ CALL pay_item_update_value('INDUSTRIAL_ACCIDENT_INSURANCE',1.25);
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B8%89%EC%97%AC%20%ED%85%8C%EC%8A%A4%ED%8A%B8/%EC%82%B0%EC%9E%AC%EB%B3%B4%ED%97%98%20%EC%9A%94%EC%9C%A8%20%EB%B3%80%EA%B2%BD%20%EC%8B%A4%ED%96%89%20%EA%B2%B0%EA%B3%BC.png?raw=true)
   </details>   
    <details>
-        <summary> 산재보험 활성화 상태 변경</summary>
+        <summary> 급여항목 활성화 상태 변경</summary>
      
 ```sql
 -- 급여항목 활성화 상태 변경
-CALL pay_item_toggle_use('INDUSTRIAL_ACCIDENT_INSURANCE','Y');
+CALL pay_item_toggle_use('INDUSTRIAL_ACCIDENT_INSURANCE','N');
 ```
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B8%89%EC%97%AC%20%ED%85%8C%EC%8A%A4%ED%8A%B8/%EA%B8%89%EC%97%AC%20%ED%95%AD%EB%AA%A9%20%ED%99%9C%EC%84%B1%ED%99%94%20%EC%8B%A4%ED%96%89%20%EA%B2%B0%EA%B3%BC.png?raw=true)
  </details>   
@@ -2451,7 +2451,7 @@ CALL payslip_create(3, '2026-01');
      
 ```sql
 -- 급여 명세서 확정
-CALL payslip_confirm(10);
+CALL payslip_confirm(1);
 ```
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B8%89%EC%97%AC%20%ED%85%8C%EC%8A%A4%ED%8A%B8/%EA%B8%89%EC%97%AC%20%EB%AA%85%EC%84%B8%EC%84%9C%20%ED%99%95%EC%A0%95%20%EC%8B%A4%ED%96%89%20%EA%B2%B0%EA%B3%BC.png?raw=true)
   </details>   
@@ -2460,7 +2460,7 @@ CALL payslip_confirm(10);
      
 ```sql
 -- 급여 명세서 조회
-CALL payslip_view_admin(10);
+CALL payslip_view_admin(1);
 ```
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B8%89%EC%97%AC%20%ED%85%8C%EC%8A%A4%ED%8A%B8/%EA%B8%89%EC%97%AC%20%EB%AA%85%EC%84%B8%EC%86%8C%20%EC%A1%B0%ED%9A%8C%20%EC%8B%A4%ED%96%89%20%EA%B2%B0%EA%B3%BC1.png?raw=true)
 ![](https://github.com/beyond-sw-camp/be25-1st-WDQ-HRCore/blob/main/%EA%B8%89%EC%97%AC%20%ED%85%8C%EC%8A%A4%ED%8A%B8/%EA%B8%89%EC%97%AC%20%EB%AA%85%EC%84%B8%EC%84%9C%20%EC%A1%B0%ED%9A%8C%20%EC%8B%A4%ED%96%89%20%EA%B2%B0%EA%B3%BC2.png?raw=true)
